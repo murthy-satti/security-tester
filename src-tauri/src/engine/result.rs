@@ -16,3 +16,14 @@ pub struct TestResult {
     pub description: String,
     pub details: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TestCaseResult {
+    pub id: String,
+    pub name: String,
+    pub input_length: usize,
+    pub expected: String,
+    pub actual: String,
+    pub status: TestStatus,
+    pub details: String,
+}

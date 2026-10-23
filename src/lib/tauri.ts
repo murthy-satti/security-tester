@@ -6,7 +6,17 @@ export interface PasswordPolicyConfig {
     request_body: string;
     username: string;
     email: string;
+    minimum_length: number;
     selected_tests: string[];
+}
+export interface TestCaseResult {
+    id: string;
+    name: string;
+    input_length: number;
+    expected: string;
+    actual: string;
+status: "passed" | "failed" | "warning" | "error";
+    details: string;
 }
 
 export interface TestResult {
@@ -19,15 +29,15 @@ export interface TestResult {
 
 interface PasswordPolicyResponse {
     results: TestResult[];
+    test_cases: TestCaseResult[];
+
 }
 
 export async function runPasswordPolicyTests(
     config: PasswordPolicyConfig
-): Promise<TestResult[]> {
-    const response = await invoke<PasswordPolicyResponse>(
+): Promise<PasswordPolicyResponse> {
+    return await invoke<PasswordPolicyResponse>(
         "run_password_policy_tests",
         { config }
     );
-
-    return response.results;
 }
