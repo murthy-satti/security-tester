@@ -20,6 +20,7 @@ pub struct TestResult {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestCaseResult {
     pub id: String,
+    pub test_id: String,
     pub name: String,
     pub input_length: usize,
     pub expected: String,

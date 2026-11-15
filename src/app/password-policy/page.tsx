@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { runPasswordPolicyTests, TestCaseResult } from "@/src/lib/tauri";
 
-type TestStatus = "passed" | "failed" | "warning";
+type TestStatus = "passed" | "failed" | "warning" | "error";
 
 interface SecurityTest {
     id: string;
@@ -26,11 +26,7 @@ interface SecurityTest {
     details: string;
 }
 
-// Test case that may optionally carry the id of the test it belongs to.
-type TestCaseWithOwner = TestCaseResult & {
-    test_id?: string;
-    test?: string;
-};
+type TestCaseWithOwner = TestCaseResult;
 
 const initialTests: SecurityTest[] = [
     {
@@ -108,6 +104,8 @@ export default function PasswordPolicyPage() {
 }`);
     const [username, setUsername] = useState("security_test_user");
     const [email, setEmail] = useState("security_test@example.com");
+    const [minimumLength, setMinimumLength] = useState(8);
+    const [maximumLength, setMaximumLength] = useState(64);
 
     const [selectedTests, setSelectedTests] = useState<string[]>(
         initialTests.map((test) => test.id)
@@ -142,15 +140,8 @@ export default function PasswordPolicyPage() {
         );
     };
 
-    // Returns only the test cases that belong to a given test.
-    // Falls back to "all cases belong to min-length" if the backend
-    // does not send a test_id yet.
     const getCasesFor = (testId: string): TestCaseWithOwner[] => {
-        const hasOwner = testCases.some((tc) => tc.test_id || tc.test);
-        if (hasOwner) {
-            return testCases.filter((tc) => (tc.test_id ?? tc.test) === testId);
-        }
-        return testId === "min-length" ? testCases : [];
+        return testCases.filter((tc) => tc.test_id === testId);
     };
 
     const runTests = async () => {
@@ -167,7 +158,8 @@ export default function PasswordPolicyPage() {
                 username,
                 email,
                 selected_tests: selectedTests,
-                minimum_length: 8,
+                minimum_length: minimumLength,
+                maximum_length: maximumLength,
             });
 
             setResults(
@@ -211,6 +203,7 @@ export default function PasswordPolicyPage() {
             passed: results.filter((t) => t.status === "passed").length,
             failed: results.filter((t) => t.status === "failed").length,
             warning: results.filter((t) => t.status === "warning").length,
+            error: results.filter((t) => t.status === "error").length,
         };
     }, [results]);
 
@@ -314,6 +307,18 @@ export default function PasswordPolicyPage() {
                         </div>
 
                         <div className="space-y-4">
+                            <div className="grid gap-6 sm:grid-cols-2">
+                                <div>
+                                    <label className="mb-2 block text-base font-medium text-slate-700">Minimum password length</label>
+                                    <input type="number" min={1} max={maximumLength} value={minimumLength} onChange={(e) => setMinimumLength(Number(e.target.value))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-100" />
+                                </div>
+                                <div>
+                                    <label className="mb-2 block text-base font-medium text-slate-700">Maximum password length</label>
+                                    <input type="number" min={minimumLength} max={1024} value={maximumLength} onChange={(e) => setMaximumLength(Number(e.target.value))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-100" />
+                                </div>
+                            </div>
+                            <p className="text-xs text-amber-700">Running these checks sends registration requests to the endpoint. Use an endpoint you are authorized to test and a test identity; successful requests may create accounts.</p>
+
                             {/* Endpoint + Method */}
                             <div className="grid gap-6 sm:grid-cols-[1fr_160px]">
                                 <div>
@@ -508,7 +513,7 @@ export default function PasswordPolicyPage() {
                 {currentStep === 2 && (
                     <section className="mt-8">
                         {/* Summary */}
-                        <div className="grid gap-4 sm:grid-cols-3">
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                             <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-5">
                                 <div className="flex items-center gap-3">
                                     <CheckCircle2 className="h-5 w-5 text-emerald-600" />
@@ -541,6 +546,16 @@ export default function PasswordPolicyPage() {
                                         <p className="mt-1 text-2xl font-bold text-slate-900">
                                             {summary.warning}
                                         </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="rounded-xl border border-slate-300 bg-slate-50 p-5">
+                                <div className="flex items-center gap-3">
+                                    <CircleAlert className="h-5 w-5 text-slate-600" />
+                                    <div>
+                                        <p className="text-sm text-slate-500">Errors</p>
+                                        <p className="mt-1 text-2xl font-bold text-slate-900">{summary.error}</p>
                                     </div>
                                 </div>
                             </div>
@@ -587,21 +602,27 @@ export default function PasswordPolicyPage() {
                                             ? "text-emerald-600"
                                             : result.status === "failed"
                                               ? "text-red-600"
-                                              : "text-amber-600";
+                                              : result.status === "error"
+                                                ? "text-slate-600"
+                                                : "text-amber-600";
 
                                     const badge =
                                         result.status === "passed"
                                             ? "bg-emerald-50 text-emerald-700"
                                             : result.status === "failed"
                                               ? "bg-red-50 text-red-700"
-                                              : "bg-amber-50 text-amber-700";
+                                              : result.status === "error"
+                                                ? "bg-slate-100 text-slate-700"
+                                                : "bg-amber-50 text-amber-700";
 
                                     const label =
                                         result.status === "passed"
                                             ? "PASS"
                                             : result.status === "failed"
                                               ? "FAIL"
-                                              : "WARNING";
+                                              : result.status === "error"
+                                                ? "ERROR"
+                                                : "WARNING";
 
                                     return (
                                         <div key={result.id} className="px-6 py-5">
@@ -683,6 +704,9 @@ export default function PasswordPolicyPage() {
                                                                         <th className="px-3 py-3">
                                                                             Actual
                                                                         </th>
+                                                                        <th className="min-w-64 px-3 py-3">
+                                                                            Details
+                                                                        </th>
                                                                         <th className="px-3 py-3">
                                                                             Status
                                                                         </th>
@@ -706,6 +730,9 @@ export default function PasswordPolicyPage() {
                                                                             </td>
                                                                             <td className="px-3 py-3">
                                                                                 {testCase.actual}
+                                                                            </td>
+                                                                            <td className="min-w-64 whitespace-normal px-3 py-3 text-slate-600">
+                                                                                {testCase.details}
                                                                             </td>
                                                                             <td className="px-3 py-3">
                                                                                 <span

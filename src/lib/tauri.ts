@@ -7,15 +7,17 @@ export interface PasswordPolicyConfig {
     username: string;
     email: string;
     minimum_length: number;
+    maximum_length: number;
     selected_tests: string[];
 }
 export interface TestCaseResult {
     id: string;
+    test_id: string;
     name: string;
     input_length: number;
     expected: string;
     actual: string;
-status: "passed" | "failed" | "warning" | "error";
+    status: "Passed" | "Failed" | "Warning" | "Error" | "passed" | "failed" | "warning" | "error";
     details: string;
 }
 
